@@ -25,6 +25,7 @@ const execFileAsync = promisify(execFile);
 
 const PORT = Number(process.env.PORT ?? 8787);
 const MCP_PATH = process.env.MCP_PATH ?? "/mcp";
+const PUBLIC_MCP_URL = (process.env.PUBLIC_MCP_URL ?? "").trim();
 const STARTED_AT = new Date();
 const CWD = process.cwd();
 const PLATFORM = os.platform();
@@ -61,6 +62,28 @@ const CONFIG = {
 
 const AUDIT_DIR = path.join(CWD, ".mcp-audit");
 const ARTIFACT_DIR = path.join(CWD, ".mcp-artifacts");
+const SECRET_KEY_FILE = path.join(ARTIFACT_DIR, "secret-key.txt");
+const ENV_SECRET_KEY = (process.env.SECRET_KEY ?? "").trim();
+
+// The secret key gates every privileged tool in one step: any request that
+// presents it (query param or header) gets full local.control access, no
+// OAuth flow or control_pin involved. Generated once and persisted so the
+// connector URL survives restarts.
+async function resolveSecretKey() {
+  if (ENV_SECRET_KEY) return ENV_SECRET_KEY;
+  await mkdir(ARTIFACT_DIR, { recursive: true });
+  try {
+    const existing = (await readFile(SECRET_KEY_FILE, "utf8")).trim();
+    if (existing) return existing;
+  } catch {
+    // No stored key yet; fall through and generate one.
+  }
+  const generated = randomToken(24);
+  await writeFile(SECRET_KEY_FILE, `${generated}\n`, "utf8");
+  return generated;
+}
+
+const SECRET_KEY = await resolveSecretKey();
 
 function platformLabel() {
   if (PLATFORM === "darwin") return "Mac";
@@ -194,7 +217,17 @@ function bearerTokenFromRequest(req) {
   return "";
 }
 
-function authContextFromRequest(req) {
+function secretKeyFromRequest(req, url) {
+  const header = String(req.headers["x-secret-key"] ?? "").trim();
+  if (header) return header;
+  return (url?.searchParams.get("secret-key") ?? "").trim();
+}
+
+function authContextFromRequest(req, url) {
+  if (SECRET_KEY && secretKeyFromRequest(req, url) === SECRET_KEY) {
+    return { token: "secret-key", scopes: [...OAUTH_SCOPES] };
+  }
+
   const token = bearerTokenFromRequest(req);
   const entry = token ? OAUTH_TOKENS.get(token) : undefined;
   if (!entry) {
@@ -279,14 +312,16 @@ function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, content-type, mcp-session-id",
+    "Access-Control-Allow-Headers": "authorization, content-type, mcp-session-id, x-secret-key",
     "Access-Control-Expose-Headers": "Mcp-Session-Id",
   };
 }
 
-function toolMeta(invoking, invoked, securitySchemes = NO_AUTH_SECURITY_SCHEMES) {
+// No securitySchemes in tool metadata: advertising mixed noauth/oauth2 makes
+// ChatGPT attempt OAuth discovery and fail with "mixed auth". Auth is the
+// secret key on the connector URL, verified per request.
+function toolMeta(invoking, invoked) {
   return {
-    securitySchemes,
     "openai/visibility": "public",
     "openai/toolInvocation/invoking": invoking,
     "openai/toolInvocation/invoked": invoked,
@@ -363,6 +398,136 @@ async function runCommandCapturingFailures(argv, cwd, timeoutMs) {
     }
     throw error;
   }
+}
+
+async function execCheck(argv, cwd, timeoutMs) {
+  try {
+    const result = await execFileAsync(argv[0], argv.slice(1), {
+      cwd,
+      timeout: timeoutMs,
+      maxBuffer: 16 * 1024 * 1024,
+      env: { ...process.env, LOCAL_CONTROL_PIN: "" },
+    });
+    return { exitCode: 0, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
+  } catch (error) {
+    if (typeof error === "object" && error && "stdout" in error) {
+      return {
+        exitCode: typeof error.code === "number" ? error.code : 1,
+        stdout: error.stdout ?? "",
+        stderr: error.stderr ?? String(error.message ?? ""),
+      };
+    }
+    throw error;
+  }
+}
+
+function parseTscDiagnostics(output) {
+  const diagnostics = [];
+  const pattern = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+([^:\s]+):\s+(.*)$/;
+  for (const line of output.split(/\r?\n/)) {
+    const match = line.match(pattern);
+    if (match) {
+      diagnostics.push({
+        file: match[1],
+        line: Number(match[2]),
+        column: Number(match[3]),
+        severity: match[4],
+        code: match[5],
+        message: match[6],
+        source: "tsc",
+      });
+    }
+  }
+  return diagnostics;
+}
+
+function parseEslintDiagnostics(text) {
+  try {
+    return JSON.parse(text).flatMap((fileResult) =>
+      (fileResult.messages ?? []).map((message) => ({
+        file: fileResult.filePath,
+        line: message.line ?? 1,
+        column: message.column ?? 1,
+        severity: message.severity === 2 ? "error" : "warning",
+        code: String(message.ruleId ?? ""),
+        message: message.message,
+        source: "eslint",
+      }))
+    );
+  } catch {
+    return [];
+  }
+}
+
+function parseRuffDiagnostics(text) {
+  try {
+    return JSON.parse(text).map((item) => ({
+      file: item.filename ?? "",
+      line: item.location?.row ?? item.row ?? 1,
+      column: item.location?.column ?? item.column ?? 1,
+      severity: String(item.code ?? "").startsWith("E") ? "error" : "warning",
+      code: String(item.code ?? ""),
+      message: item.message ?? "",
+      source: "ruff",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+const MAX_CODE_DIAGNOSTICS = 200;
+
+async function runCodeDiagnostics(projectPath, timeoutMs) {
+  const checks = [];
+  const diagnostics = [];
+
+  async function runCheck(name, argv, parse) {
+    try {
+      const result = await execCheck(argv, projectPath, timeoutMs);
+      const parsed = parse(result.stdout);
+      checks.push({ name, ran: true, detail: `${parsed.length} finding(s), exit code ${result.exitCode}` });
+      for (const item of parsed) {
+        if (diagnostics.length >= MAX_CODE_DIAGNOSTICS) return;
+        diagnostics.push(item);
+      }
+    } catch (error) {
+      checks.push({ name, ran: false, detail: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  const tscBin = path.join(projectPath, "node_modules", "typescript", "bin", "tsc");
+  const eslintBin = path.join(projectPath, "node_modules", "eslint", "bin", "eslint.js");
+  const hasPackageJson = existsSync(path.join(projectPath, "package.json"));
+
+  if (hasPackageJson && existsSync(tscBin)) {
+    await runCheck("tsc", ["node", tscBin, "--noEmit", "--pretty", "false"], parseTscDiagnostics);
+  } else {
+    checks.push({ name: "tsc", ran: false, detail: "TypeScript not installed in this project." });
+  }
+
+  if (existsSync(eslintBin)) {
+    await runCheck("eslint", ["node", eslintBin, "-f", "json", "."], parseEslintDiagnostics);
+  } else {
+    checks.push({ name: "eslint", ran: false, detail: "ESLint not installed in this project." });
+  }
+
+  const hasRuffConfig =
+    existsSync(path.join(projectPath, "ruff.toml")) ||
+    existsSync(path.join(projectPath, ".ruff.toml")) ||
+    existsSync(path.join(projectPath, "pyproject.toml"));
+
+  if (hasRuffConfig) {
+    await runCheck("ruff", ["python", "-m", "ruff", "check", "--output-format", "json", "."], parseRuffDiagnostics);
+  } else {
+    checks.push({ name: "ruff", ran: false, detail: "No ruff.toml or pyproject.toml found." });
+  }
+
+  return {
+    path: projectPath,
+    checks,
+    diagnostics,
+    truncated: diagnostics.length >= MAX_CODE_DIAGNOSTICS,
+  };
 }
 
 async function runPowerShellScript(script, { timeoutMs = CONFIG.commandTimeoutMs, env = {}, sta = false } = {}) {
@@ -708,8 +873,26 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: false,
       idempotentHint: true,
     },
-    securitySchemes: NO_AUTH_SECURITY_SCHEMES,
     _meta: toolMeta("Checking computer control status", "Computer control status ready"),
+  },
+  {
+    name: "code_diagnostics",
+    title: "Code diagnostics",
+    description:
+      "Run the editor-style code checkers (tsc, ESLint, ruff) on a project folder and return structured diagnostics like a Problems panel: file, line, severity, code, message. Requires OAuth scope local.control or the secret key.",
+    inputSchema: {
+      path: { type: "string", description: "Project folder to check. Relative paths resolve from server cwd." },
+      timeoutMs: { type: "integer", minimum: 1000, maximum: 120000 },
+    },
+    required: [],
+    additionalProperties: false,
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+      idempotentHint: false,
+    },
+    _meta: toolMeta("Checking project code diagnostics", "Code diagnostics ready"),
   },
   {
     name: "list_directory",
@@ -730,7 +913,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: false,
       idempotentHint: true,
     },
-    securitySchemes: NO_AUTH_SECURITY_SCHEMES,
     _meta: toolMeta("Listing local directory", "Local directory listing ready"),
   },
   {
@@ -753,7 +935,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: false,
       idempotentHint: true,
     },
-    securitySchemes: NO_AUTH_SECURITY_SCHEMES,
     _meta: toolMeta("Reading local file", "Local file read"),
   },
   {
@@ -777,7 +958,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: false,
       idempotentHint: false,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Writing local file", "Local file write finished", CONTROL_SECURITY_SCHEMES),
   },
   {
@@ -806,7 +986,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: true,
       idempotentHint: false,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Running local command", "Local command finished", CONTROL_SECURITY_SCHEMES),
   },
   {
@@ -826,7 +1005,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: false,
       idempotentHint: false,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Taking screenshot", "Screenshot ready", CONTROL_SECURITY_SCHEMES),
   },
   {
@@ -848,7 +1026,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: true,
       idempotentHint: false,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Opening local target", "Local target opened", CONTROL_SECURITY_SCHEMES),
   },
   {
@@ -871,7 +1048,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: true,
       idempotentHint: false,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Running AppleScript", "AppleScript finished", CONTROL_SECURITY_SCHEMES),
   },
   {
@@ -895,7 +1071,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: true,
       idempotentHint: false,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Running PowerShell", "PowerShell finished", CONTROL_SECURITY_SCHEMES),
   },
   {
@@ -916,7 +1091,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: false,
       idempotentHint: true,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Reading cursor position", "Cursor position ready", CONTROL_SECURITY_SCHEMES),
   },
   {
@@ -940,7 +1114,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: false,
       idempotentHint: false,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Moving mouse", "Mouse moved", CONTROL_SECURITY_SCHEMES),
   },
   {
@@ -966,7 +1139,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: false,
       idempotentHint: false,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Clicking mouse", "Mouse click finished", CONTROL_SECURITY_SCHEMES),
   },
   {
@@ -990,7 +1162,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: true,
       idempotentHint: false,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Pressing keys", "Key press finished", CONTROL_SECURITY_SCHEMES),
   },
   {
@@ -1014,7 +1185,6 @@ const TOOL_DESCRIPTORS = [
       openWorldHint: true,
       idempotentHint: false,
     },
-    securitySchemes: CONTROL_SECURITY_SCHEMES,
     _meta: toolMeta("Typing text", "Text typed", CONTROL_SECURITY_SCHEMES),
   },
 ];
@@ -1080,6 +1250,59 @@ function createLocalControlServer(authContext = { scopes: [] }) {
         uptimeSeconds: Math.round(process.uptime()),
         startedAt: STARTED_AT.toISOString(),
         });
+      } catch (error) {
+        return asError(error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "code_diagnostics",
+    {
+      title: "Code diagnostics",
+      description:
+        "Run the editor-style code checkers (tsc, ESLint, ruff) on a project folder and return structured diagnostics like a Problems panel: file, line, severity, code, message.",
+      inputSchema: {
+        path: z.string().optional().describe("Project folder to check. Defaults to the server working directory."),
+        timeoutMs: z.number().int().min(1000).max(120000).optional().describe("Per-checker timeout. Default 60000."),
+      },
+      outputSchema: {
+        path: z.string(),
+        checks: z.array(z.object({ name: z.string(), ran: z.boolean(), detail: z.string() })),
+        diagnostics: z.array(
+          z.object({
+            file: z.string(),
+            line: z.number(),
+            column: z.number(),
+            severity: z.string(),
+            code: z.string(),
+            message: z.string(),
+            source: z.string(),
+          })
+        ),
+        truncated: z.boolean(),
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        idempotentHint: false,
+      },
+      _meta: toolMeta("Checking project code diagnostics", "Code diagnostics ready"),
+    },
+    async ({ path: requestedPath = ".", timeoutMs }) => {
+      try {
+        requireControlAuthorization(undefined, authContext);
+        const projectPath = await resolveAllowedPath(requestedPath);
+        const projectStat = await stat(projectPath);
+        if (!projectStat.isDirectory()) throw new Error("path must be a directory.");
+
+        const result = await runCodeDiagnostics(
+          projectPath,
+          Math.min(Math.max(timeoutMs ?? 60_000, 1_000), 120_000)
+        );
+        await audit({ tool: "code_diagnostics", path: projectPath, findings: result.diagnostics.length });
+        return asTextResult(result);
       } catch (error) {
         return asError(error);
       }
@@ -1872,7 +2095,7 @@ const httpServer = createServer(async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Expose-Headers", "Mcp-Session-Id");
 
-    const server = createLocalControlServer(authContextFromRequest(req));
+    const server = createLocalControlServer(authContextFromRequest(req, url));
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
@@ -1901,5 +2124,11 @@ const httpServer = createServer(async (req, res) => {
 httpServer.listen(PORT, () => {
   console.log(`Local control MCP listening on http://localhost:${PORT}${MCP_PATH}`);
   console.log(`Allowed roots: ${ALLOWED_ROOTS.join(", ") || "(none)"}`);
-  console.log("Use an HTTPS tunnel for ChatGPT connector setup.");
+  if (PUBLIC_MCP_URL) {
+    const separator = PUBLIC_MCP_URL.includes("?") ? "&" : "?";
+    console.log(`ChatGPT connector URL: ${PUBLIC_MCP_URL}${separator}secret-key=${SECRET_KEY}`);
+  } else {
+    console.log("Use an HTTPS tunnel for ChatGPT connector setup.");
+  }
+  console.log(`Secret key: ${SECRET_KEY} (grants full control via ?secret-key= or x-secret-key header)`);
 });

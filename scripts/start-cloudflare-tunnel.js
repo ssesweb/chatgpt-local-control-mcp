@@ -44,6 +44,12 @@ async function findCloudflared() {
   const home = os.homedir();
   const candidates = [
     path.join(ROOT_DIR, ".bin", IS_WINDOWS ? "cloudflared.exe" : "cloudflared"),
+    // The npm package exposes a .cmd shim in node_modules/.bin on Windows.
+    // Node's spawn() does not resolve that shim unless shell mode is enabled,
+    // so prefer the bundled native executable instead.
+    ...(IS_WINDOWS
+      ? [path.join(ROOT_DIR, "node_modules", "cloudflared", "bin", "cloudflared.exe")]
+      : []),
     path.join(home, ".local", "bin", IS_WINDOWS ? "cloudflared.exe" : "cloudflared"),
     ...(IS_WINDOWS
       ? [
@@ -99,6 +105,11 @@ function handleOutput(chunk) {
 
 child.stdout.on("data", handleOutput);
 child.stderr.on("data", handleOutput);
+child.on("error", (error) => {
+  console.error(`Failed to start cloudflared: ${error.message}`);
+  void logLine(`Failed to start cloudflared: ${error.stack ?? error.message}`);
+  process.exit(127);
+});
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
