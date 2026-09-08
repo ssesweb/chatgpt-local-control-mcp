@@ -27,6 +27,16 @@
 
 ## 本地启动
 
+第一次 `npm start` 时，如果项目目录没有 `.env`，会自动进入交互式配置向导，依次询问：允许访问的目录、高权限能力开关、对外 HTTPS 地址、`SECRET_KEY` 与备用 PIN（密钥默认用 UUID 自动生成），写入 `.env` 后自动启动服务。
+
+之后想重新配置，运行：
+
+```bash
+npm run setup
+```
+
+也可以手动创建配置后直接启动：
+
 ```bash
 npm install
 cp .env.example .env

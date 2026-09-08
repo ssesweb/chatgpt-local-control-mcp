@@ -19,6 +19,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import "dotenv/config";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
 const execFileAsync = promisify(execFile);
@@ -78,7 +79,7 @@ async function resolveSecretKey() {
   } catch {
     // No stored key yet; fall through and generate one.
   }
-  const generated = randomToken(24);
+  const generated = uuidv4();
   await writeFile(SECRET_KEY_FILE, `${generated}\n`, "utf8");
   return generated;
 }
