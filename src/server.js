@@ -25,6 +25,7 @@ import { z } from "zod";
 const execFileAsync = promisify(execFile);
 
 const PORT = Number(process.env.PORT ?? 8787);
+const HOST = (process.env.HOST ?? "127.0.0.1").trim() || "127.0.0.1";
 const MCP_PATH = process.env.MCP_PATH ?? "/mcp";
 const PUBLIC_MCP_URL = (process.env.PUBLIC_MCP_URL ?? "").trim();
 const STARTED_AT = new Date();
@@ -2122,9 +2123,12 @@ const httpServer = createServer(async (req, res) => {
   res.writeHead(404).end("Not Found");
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`Local control MCP listening on http://localhost:${PORT}${MCP_PATH}`);
+httpServer.listen(PORT, HOST, () => {
+  console.log(`Local control MCP listening on http://${HOST}:${PORT}${MCP_PATH}`);
   console.log(`Allowed roots: ${ALLOWED_ROOTS.join(", ") || "(none)"}`);
+  if (HOST === "0.0.0.0" || HOST === "::" || HOST === "") {
+    console.log("Warning: HOST is open to all network interfaces. Make sure a secret key is required.");
+  }
   if (PUBLIC_MCP_URL) {
     const separator = PUBLIC_MCP_URL.includes("?") ? "&" : "?";
     console.log(`ChatGPT connector URL: ${PUBLIC_MCP_URL}${separator}secret-key=${SECRET_KEY}`);
