@@ -44,3 +44,11 @@ HOST=127.0.0.1                       # 0.0.0.0 才对外
 ## 安全
 
 带 `secret-key` 的 URL 等于本机完整控制权，只发给可信客户端。高权限调用全部记录在 `.mcp-audit/events.jsonl`。
+
+## macOS
+
+需要 Node.js 20+。Mac 首次快速配置默认开启 AppleScript; 未设置 `ALLOW_APPLESCRIPT` 时也默认开启, 显式设为 `0` 可禁用。已有 `.env` 若为 `0`, 需改为 `1` 或重新运行配置向导。
+
+AppleScript 操作应用界面时, 请在系统设置 > 隐私与安全性中为启动服务的应用授予所需的自动化、辅助功能权限; 截图需要屏幕录制权限。MCP 密钥授权不替代 macOS 系统授权, 系统弹窗需要用户确认。
+
+`move_mouse`、`mouse_click`、`press_keys`、`type_text`、`get_cursor_position` 目前仅支持 Windows; Mac 应用自动化使用 `run_applescript`。

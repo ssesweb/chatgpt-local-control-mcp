@@ -88,6 +88,7 @@ let allowUnsafeShell = true;
 let allowScreenshot = true;
 let allowOpen = true;
 let allowGui = true;
+let allowAppleScript = process.platform === "darwin";
 let publicUrl = existing.PUBLIC_MCP_URL || "";
 let host = existing.HOST || "127.0.0.1";
 
@@ -101,6 +102,7 @@ if (!quickStart) {
   allowScreenshot = allowAll;
   allowOpen = allowAll;
   allowGui = allowAll;
+  allowAppleScript = allowAll && process.platform === "darwin";
 
   if (!allowAll) {
     allowWrites = await askBoolean("允许写文件 (ALLOW_WRITES)?", existing.ALLOW_WRITES === "1");
@@ -108,6 +110,9 @@ if (!quickStart) {
     allowUnsafeShell = allowShell && (await askBoolean("允许任意命令与 PowerShell 脚本 (ALLOW_UNSAFE_SHELL)?", existing.ALLOW_UNSAFE_SHELL === "1"));
     allowScreenshot = await askBoolean("允许截屏 (ALLOW_SCREENSHOT)?", existing.ALLOW_SCREENSHOT === "1");
     allowOpen = await askBoolean("允许打开 URL/文件/应用 (ALLOW_OPEN)?", existing.ALLOW_OPEN === "1");
+    if (process.platform === "darwin") {
+      allowAppleScript = await askBoolean("允许 AppleScript 应用自动化 (ALLOW_APPLESCRIPT)?", existing.ALLOW_APPLESCRIPT !== "0");
+    }
     allowGui = await askBoolean("允许鼠标键盘控制 (ALLOW_GUI)?", existing.ALLOW_GUI === "1");
   }
 
@@ -153,7 +158,7 @@ ALLOW_UNSAFE_SHELL=${allowUnsafeShell ? 1 : 0}
 ALLOW_SCREENSHOT=${allowScreenshot ? 1 : 0}
 ALLOW_OPEN=${allowOpen ? 1 : 0}
 ALLOW_GUI=${allowGui ? 1 : 0}
-ALLOW_APPLESCRIPT=${existing.ALLOW_APPLESCRIPT ?? 0}
+ALLOW_APPLESCRIPT=${allowAppleScript ? 1 : 0}
 
 SAFE_EXECUTABLES=${existing.SAFE_EXECUTABLES || SAFE_EXECUTABLES_DEFAULT}
 
@@ -176,7 +181,10 @@ console.log("");
 console.log(`.env 已生成: ${ENV_FILE}`);
 console.log(`监听地址: ${host === "0.0.0.0" ? "所有网卡(0.0.0.0)" : "仅本机(127.0.0.1)"}`);
 console.log(`允许目录: ${roots}`);
-console.log(`高权限能力: writes=${allowWrites ? 1 : 0} shell=${allowShell ? 1 : 0} unsafeShell=${allowUnsafeShell ? 1 : 0} screenshot=${allowScreenshot ? 1 : 0} open=${allowOpen ? 1 : 0} gui=${allowGui ? 1 : 0}`);
+console.log(`高权限能力: writes=${allowWrites ? 1 : 0} shell=${allowShell ? 1 : 0} unsafeShell=${allowUnsafeShell ? 1 : 0} screenshot=${allowScreenshot ? 1 : 0} open=${allowOpen ? 1 : 0} gui=${allowGui ? 1 : 0} applescript=${allowAppleScript ? 1 : 0}`);
+if (allowAppleScript) {
+  console.log("macOS 界面操作需要在系统设置 > 隐私与安全性中授权启动服务的应用: 自动化 / 辅助功能; 截图另需屏幕录制权限。");
+}
 if (publicUrl) {
   console.log(`ChatGPT connector URL: ${publicUrl}?secret-key=${secretKey}`);
 }

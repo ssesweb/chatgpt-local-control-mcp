@@ -44,7 +44,7 @@ const CONFIG = {
   allowUnsafeShell: process.env.ALLOW_UNSAFE_SHELL === "1",
   allowScreenshot: process.env.ALLOW_SCREENSHOT === "1",
   allowOpen: process.env.ALLOW_OPEN === "1",
-  allowAppleScript: process.env.ALLOW_APPLESCRIPT === "1",
+  allowAppleScript: (process.env.ALLOW_APPLESCRIPT ?? (PLATFORM === "darwin" ? "1" : "0")) === "1",
   allowGui: process.env.ALLOW_GUI === "1",
   controlPin: process.env.LOCAL_CONTROL_PIN ?? "",
   requireOAuthApprovalPin: process.env.OAUTH_REQUIRE_APPROVAL_PIN === "1",
@@ -883,11 +883,13 @@ const TOOL_DESCRIPTORS = [
     description:
       "Run the editor-style code checkers (tsc, ESLint, ruff) on a project folder and return structured diagnostics like a Problems panel: file, line, severity, code, message. Requires OAuth scope local.control or the secret key.",
     inputSchema: {
-      path: { type: "string", description: "Project folder to check. Relative paths resolve from server cwd." },
-      timeoutMs: { type: "integer", minimum: 1000, maximum: 120000 },
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Project folder to check. Relative paths resolve from server cwd." },
+        timeoutMs: { type: "integer", minimum: 1000, maximum: 120000 },
+      },
+      additionalProperties: false,
     },
-    required: [],
-    additionalProperties: false,
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
