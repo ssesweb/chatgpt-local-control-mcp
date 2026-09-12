@@ -28,6 +28,7 @@ const PORT = Number(process.env.PORT ?? 8787);
 const HOST = (process.env.HOST ?? "127.0.0.1").trim() || "127.0.0.1";
 const MCP_PATH = process.env.MCP_PATH ?? "/mcp";
 const PUBLIC_MCP_URL = (process.env.PUBLIC_MCP_URL ?? "").trim();
+const QUICK_TUNNEL = process.env.TUNNEL_MODE === "cloudflare";
 const STARTED_AT = new Date();
 const CWD = process.cwd();
 const PLATFORM = os.platform();
@@ -1246,8 +1247,8 @@ function createLocalControlServer(authContext = { scopes: [] }) {
           appleScript: CONFIG.allowAppleScript,
           gui: CONFIG.allowGui,
           powerShell: PLATFORM === "win32",
-          readToolsRequireAuth: false,
-          oauth: true,
+          readToolsRequireAuth: QUICK_TUNNEL,
+          oauth: !QUICK_TUNNEL,
           oauthApprovalPinRequired: CONFIG.requireOAuthApprovalPin && hasConfiguredControlPin(),
           pinFallbackForControl: hasConfiguredControlPin(),
         },
@@ -2028,6 +2029,11 @@ const httpServer = createServer(async (req, res) => {
     return;
   }
 
+  if (QUICK_TUNNEL && url.pathname !== "/health" && secretKeyFromRequest(req, url) !== SECRET_KEY) {
+    sendJson(res, 401, { error: "A valid secret key is required in Cloudflare quick tunnel mode." });
+    return;
+  }
+
   if (req.method === "GET" && url.pathname === "/") {
     sendJson(res, 200, {
       name: "chatgpt-local-control-mcp",
@@ -2042,8 +2048,8 @@ const httpServer = createServer(async (req, res) => {
         appleScript: CONFIG.allowAppleScript,
         gui: CONFIG.allowGui,
         powerShell: PLATFORM === "win32",
-        readToolsRequireAuth: false,
-        oauth: true,
+        readToolsRequireAuth: QUICK_TUNNEL,
+        oauth: !QUICK_TUNNEL,
         pinFallbackForControl: hasConfiguredControlPin(),
       },
     });
@@ -2055,8 +2061,9 @@ const httpServer = createServer(async (req, res) => {
       ok: true,
       name: "chatgpt-local-control-mcp",
       mcpPath: MCP_PATH,
-      allowedRoots: ALLOWED_ROOTS,
-      oauth: true,
+      ...(QUICK_TUNNEL ? {} : { allowedRoots: ALLOWED_ROOTS }),
+      quickTunnelProtected: QUICK_TUNNEL,
+      oauth: !QUICK_TUNNEL,
     });
     return;
   }
@@ -2131,7 +2138,7 @@ httpServer.listen(PORT, HOST, () => {
   if (HOST === "0.0.0.0" || HOST === "::" || HOST === "") {
     console.log("Warning: HOST is open to all network interfaces. Make sure a secret key is required.");
   }
-  if (PUBLIC_MCP_URL) {
+  if (PUBLIC_MCP_URL && !QUICK_TUNNEL) {
     const separator = PUBLIC_MCP_URL.includes("?") ? "&" : "?";
     console.log(`ChatGPT connector URL: ${PUBLIC_MCP_URL}${separator}secret-key=${SECRET_KEY}`);
   } else {
@@ -2139,3 +2146,5 @@ httpServer.listen(PORT, HOST, () => {
   }
   console.log(`Secret key: ${SECRET_KEY} (grants full control via ?secret-key= or x-secret-key header)`);
 });
+
+export { httpServer, SECRET_KEY };

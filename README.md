@@ -4,41 +4,54 @@
 
 ## 快速开始
 
+root@device:/#
 ```bash
 npm install
 npm start
 ```
 
-首次运行自动进入配置向导，直接回车即一键快速开启（目录为用户主目录、全部高权限能力、自动生成 UUID 密钥、仅监听本机）。启动后直接输出可粘贴到 ChatGPT 的 Connector URL：
+首次运行自动进入配置向导。快速开启默认允许访问用户主目录、开启本平台支持的高权限能力并生成 UUID 密钥, Mac 同时开启 AppleScript。向导会让你选择接入方式:
 
+- `cloudflare` (默认): 自动启动 Cloudflare 临时隧道, 无需填写域名。服务仍监听 `127.0.0.1`, 隧道提供公网 HTTPS 入口, 所有业务请求必须携带密钥。
+- `manual`: 输入已配置好的完整 HTTPS MCP 地址, 例如 `https://mcp.example.com/mcp`。程序不会替你创建域名或反向代理。
+- `local`: 仅启动本地服务, 不提供可供 ChatGPT 官网连接的公网地址。
+
+Cloudflare 模式会先验证公网 MCP 连接、工具列表和状态调用, 成功后才输出:
+
+root@device:/#
 ```text
-ChatGPT connector URL: https://your-domain.example/mcp?secret-key=<your-secret-key>
+ChatGPT connector URL: https://<temporary-name>.trycloudflare.com/mcp?secret-key=<your-secret-key>
 ```
 
-重新配置：`npm run setup`
+保持终端运行; Ctrl+C 会停止服务与自动启动的隧道。临时地址重启后可能变化, 需要更新 ChatGPT 连接器地址。长期使用建议配置固定域名的 Cloudflare Tunnel 或 HTTPS 反向代理, 在向导中选择 `manual`。
+
+重新配置使用 `npm run setup`, 然后 `npm start`。已有 `.env` 不会自动迁移; 要启用自动隧道, 请重新配置或设 `TUNNEL_MODE=cloudflare`。`npm run tunnel` 可单独启动隧道, 但本地服务必须已按该模式重启。
 
 ## 接入 ChatGPT
 
-`Settings -> Connectors -> Create`，Connector URL 填启动时打印的带密钥地址，Authentication 选 `No authentication`。
+在 ChatGPT 官网的自定义 MCP 连接器入口填写完整带密钥 URL, Authentication 选择 `No authentication` (密钥已在 URL 中)。需要账号具有自定义 MCP 连接器功能。程序验证的是公网 MCP 协议连通性, 不代表已替你完成 ChatGPT 官网添加连接器。
 
-对外暴露需要 HTTPS 反代或隧道（如 `npm run tunnel`）。服务默认只监听 `127.0.0.1`，设 `HOST=0.0.0.0` 才映射到所有网卡。
+首次使用需要允许下载 cloudflared, 并确保网络可连接 Cloudflare。下载或隧道验证失败会报错, 不会输出已就绪的 Connector URL。若日志出现 `_v2-origintunneld._tcp.argotunnel.com` 查询失败, 请检查网络 DNS; 详细日志位于 `.mcp-logs/cloudflared-tunnel.log`。
+
+[Cloudflare 临时隧道](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/)用于测试, 不保证可用性且不支持 SSE; 本项目使用 Streamable HTTP 的 JSON 响应模式。
 
 ## 工具
 
-- `computer_status` / `list_directory` / `read_file`：状态与只读文件访问，无须授权
+- `computer_status` / `list_directory` / `read_file`：状态与只读文件访问; Cloudflare 临时隧道模式需要密钥, 其他模式维持原有只读免授权行为
 - `code_diagnostics`：运行 tsc / ESLint / ruff，返回问题面板式结构化诊断
 - `write_file` / `run_command` / `run_powershell` / `take_screenshot` / `open_target` / `run_applescript` / `move_mouse` / `mouse_click` / `press_keys` / `type_text` / `get_cursor_position`：高权限工具，凭密钥或 OAuth `local.control` 使用
 
 ## 配置
 
-完整项见 `.env.example`。常用：
+完整项见 `.env.example`。`TUNNEL_MODE` 可选 `cloudflare`、`manual`、`local`; `PUBLIC_MCP_URL` 用于已有固定 HTTPS 地址。多目录在 Mac/Linux 上用冒号分隔, Windows 用分号分隔。常用配置如下:
 
+root@device:/#
 ```env
-LOCAL_CONTROL_ROOTS=C:\Users\you     # 允许访问的目录,分号分隔
-ALLOW_WRITES=1                       # 能力开关: WRITES / SHELL / UNSAFE_SHELL / SCREENSHOT / OPEN / GUI
-SECRET_KEY=<uuid>                    # 全权限密钥,留空则自动生成并保存到 .mcp-artifacts/secret-key.txt
+LOCAL_CONTROL_ROOTS=C:\Users\you
+ALLOW_WRITES=1
+SECRET_KEY=<uuid>
 PUBLIC_MCP_URL=https://your-domain.example/mcp   # 启动时打印 Connector URL 用
-HOST=127.0.0.1                       # 0.0.0.0 才对外
+HOST=127.0.0.1
 ```
 
 ## 安全

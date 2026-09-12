@@ -69,7 +69,7 @@ console.log("");
 console.log("=== ChatGPT Local Control MCP 配置向导 ===");
 console.log("");
 console.log("一键快速开启: 目录 = 当前用户主目录, 开启全部高权限能力,");
-console.log("自动生成 UUID 密钥, 仅监听 127.0.0.1(不映射公网)。");
+console.log("自动生成 UUID 密钥, 服务监听 127.0.0.1, 接下来选择公网 HTTPS 接入方式。");
 console.log("");
 
 const previousAllowAll =
@@ -116,8 +116,31 @@ if (!quickStart) {
     allowGui = await askBoolean("允许鼠标键盘控制 (ALLOW_GUI)?", existing.ALLOW_GUI === "1");
   }
 
-  publicUrl = await ask("对外 HTTPS 地址 PUBLIC_MCP_URL(可留空,留空则启动时提示配置隧道)", publicUrl);
   host = await ask("监听地址 HOST(127.0.0.1 仅本机,0.0.0.0 映射到所有网卡)", host);
+}
+
+console.log("接入方式: cloudflare = 自动临时 HTTPS 隧道, manual = 已有 HTTPS 地址, local = 仅本机。");
+console.log("Cloudflare 临时隧道会公开服务入口, 请求需携带密钥; 重启后地址可能变化。");
+let tunnelMode;
+for (;;) {
+  tunnelMode = await ask("接入方式", existing.TUNNEL_MODE || (publicUrl ? "manual" : "cloudflare"));
+  if (["cloudflare", "manual", "local"].includes(tunnelMode)) break;
+  console.log("请输入 cloudflare, manual 或 local。");
+}
+if (tunnelMode === "manual") {
+  for (;;) {
+    publicUrl = await ask("完整公网 HTTPS MCP 地址 (例如 https://mcp.example.com/mcp)", publicUrl);
+    try {
+      const parsed = new URL(publicUrl);
+      if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.hash) throw new Error();
+      break;
+    } catch {
+      console.log("请输入有效的 HTTPS 地址。");
+      if (!stdin.isTTY) process.exit(1);
+    }
+  }
+} else {
+  publicUrl = "";
 }
 
 let secretKey = await ask("SECRET_KEY 密钥(回车 = 自动生成 UUID)", existing.SECRET_KEY || "");
@@ -170,6 +193,7 @@ COMMAND_TIMEOUT_MS=15000
 
 # Public HTTPS URL shown at startup for ChatGPT connector setup.
 PUBLIC_MCP_URL=${publicUrl}
+TUNNEL_MODE=${tunnelMode}
 
 # Secret key that grants full control via ?secret-key= or the x-secret-key header.
 SECRET_KEY=${secretKey}
@@ -190,4 +214,4 @@ if (publicUrl) {
 }
 console.log(`SECRET_KEY: ${secretKey}`);
 console.log("");
-console.log("正在启动服务...");
+console.log("配置完成。npm start 将按所选方式启动服务。");

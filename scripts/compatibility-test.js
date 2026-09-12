@@ -11,10 +11,10 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 const entry = fileURLToPath(new URL("../src/server.js", import.meta.url));
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "local-control-test-"));
 
-for (const setting of [undefined, "0"]) {
+for (const [setting, tunnelMode] of [[undefined, "local"], ["0", "local"], ["0", "cloudflare"]]) {
   const key = randomUUID();
   const port = 19000 + Math.floor(Math.random() * 20000);
-  const env = { ...process.env, PORT: String(port), HOST: "127.0.0.1", MCP_PATH: "/mcp", SECRET_KEY: key, LOCAL_CONTROL_ROOTS: tempRoot, PUBLIC_MCP_URL: "", LOCAL_CONTROL_PIN: "", DOTENV_CONFIG_PATH: path.join(tempRoot, "absent.env") };
+  const env = { ...process.env, PORT: String(port), TUNNEL_MODE: tunnelMode, HOST: "127.0.0.1", MCP_PATH: "/mcp", SECRET_KEY: key, LOCAL_CONTROL_ROOTS: tempRoot, PUBLIC_MCP_URL: "", LOCAL_CONTROL_PIN: "", DOTENV_CONFIG_PATH: path.join(tempRoot, "absent.env") };
   delete env.ALLOW_APPLESCRIPT;
   if (setting !== undefined) env.ALLOW_APPLESCRIPT = setting;
   const child = spawn(process.execPath, [entry], { cwd: tempRoot, env, stdio: ["ignore", "pipe", "ignore"] });
@@ -29,6 +29,17 @@ for (const setting of [undefined, "0"]) {
       });
     });
     for (const authorized of [true, false]) {
+      if (tunnelMode === "cloudflare" && !authorized) {
+        for (const pathname of ["/mcp", "/", "/oauth/authorize"]) {
+          const response = await fetch(`http://127.0.0.1:${port}${pathname}`);
+          assert.equal(response.status, 401);
+        }
+        const health = await (await fetch(`http://127.0.0.1:${port}/health`)).json();
+        assert.equal(health.quickTunnelProtected, true);
+        assert.equal(health.allowedRoots, undefined);
+        console.log("PASS: quick tunnel requires a key and health hides file roots");
+        continue;
+      }
       const client = new Client({ name: "compatibility-test", version: "1.0.0" });
       clients.push(client);
       await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`), { requestInit: { headers: authorized ? { "x-secret-key": key } : {} } }));
@@ -47,7 +58,7 @@ for (const setting of [undefined, "0"]) {
         const message = result.content.map((item) => item.text ?? "").join(" ");
         assert.match(message, enabled ? /PIN|auth/i : /disabled/);
       }
-      console.log(`PASS: tools/list, AppleScript=${setting ?? "default"}, authorized=${authorized}`);
+      console.log(`PASS: tools/list, AppleScript=${setting ?? "default"}, authorized=${authorized}, tunnel=${tunnelMode}`);
     }
   } finally {
     for (const client of clients) await client.close();

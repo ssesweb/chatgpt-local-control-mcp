@@ -12,7 +12,7 @@
     "service:status": "bash scripts/status-launchd.sh",
     "service:uninstall": "bash scripts/uninstall-launchd.sh",
     "tunnel": "node scripts/start-cloudflare-tunnel.js",
-    "test": "node scripts/compatibility-test.js",
+    "test": "node scripts/compatibility-test.js && node scripts/tunnel-test.js",
     "smoke": "node scripts/smoke-test.js",
     "smoke:privileged": "node scripts/privileged-smoke-test.js",
     "smoke:oauth": "node scripts/oauth-smoke-test.js"
