@@ -182,58 +182,112 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     refreshStatus()
   }
 
+  // MARK: 图标与菜单构建
+
+  func icon(_ name: String) -> NSImage? {
+    guard let res = Bundle.main.resourceURL else { return nil }
+    guard let img = NSImage(contentsOf: res.appendingPathComponent("icons/\(name).svg")) else { return nil }
+    img.size = NSSize(width: 16, height: 16)
+    img.isTemplate = true
+    return img
+  }
+
+  func sectionHeader(_ title: String) -> NSMenuItem {
+    if #available(macOS 14.0, *) {
+      return NSMenuItem.sectionHeader(title: title)
+    }
+    let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+    item.attributedTitle = NSAttributedString(string: title, attributes: [
+      .font: NSFont.systemFont(ofSize: 12, weight: .semibold),
+      .foregroundColor: NSColor.secondaryLabelColor,
+    ])
+    item.isEnabled = false
+    return item
+  }
+
+  func disabledInfo(_ title: String, font: NSFont = NSFont.systemFont(ofSize: 12)) -> NSMenuItem {
+    let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+    item.attributedTitle = NSAttributedString(string: title, attributes: [
+      .font: font,
+      .foregroundColor: NSColor.secondaryLabelColor,
+    ])
+    item.isEnabled = false
+    return item
+  }
+
   func applyMenu(serverUp: Bool, tunnelUp: Bool) {
     let menu = NSMenu()
     menu.delegate = self
+    menu.autoenablesItems = false
 
+    // ── 分区：连接 ──
     let statusText = "服务：\(serverUp ? "运行中" : "已停止")   隧道：\(tunnelUp ? "运行中" : "已停止")"
-    menu.addItem(withTitle: statusText, action: nil, keyEquivalent: "").isEnabled = false
-
-    let urlItem = menu.addItem(withTitle: "复制连接器 URL（含密钥）", action: #selector(copyURL(_:)), keyEquivalent: "c")
-    urlItem.target = self
-    urlItem.isEnabled = serverUp || tunnelUp
-
+    let status = NSMenuItem(title: statusText, action: nil, keyEquivalent: "")
+    status.attributedTitle = NSAttributedString(string: statusText, attributes: [
+      .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+      .foregroundColor: NSColor.labelColor,
+    ])
+    status.isEnabled = false
+    menu.addItem(status)
     if let masked = maskedURL() {
-      let show = menu.addItem(withTitle: "当前 URL：\(masked)", action: nil, keyEquivalent: "")
-      show.isEnabled = false
+      let urlItem = disabledInfo(masked, font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular))
+      urlItem.title = masked
+      menu.addItem(urlItem)
     }
-
     menu.addItem(.separator())
 
+    let copyItem = menu.addItem(withTitle: "复制连接器 URL（含密钥）", action: #selector(copyURL(_:)), keyEquivalent: "c")
+    copyItem.target = self
+    copyItem.image = icon("link-2")
+    copyItem.isEnabled = serverUp || tunnelUp
+
+    // ── 分区：权限 ──
+    menu.addItem(.separator())
+    menu.addItem(sectionHeader("权限"))
     let env = envDict()
-    let perms: [(String, String)] = [
-      ("ALLOW_WRITES", "写文件"),
-      ("ALLOW_SHELL", "命令执行"),
-      ("ALLOW_SCREENSHOT", "截屏"),
-      ("ALLOW_OPEN", "打开应用/URL"),
-      ("ALLOW_APPLESCRIPT", "AppleScript 自动化"),
-      ("ALLOW_GUI", "鼠标键盘（仅 Windows）"),
+    let perms: [(String, String, String)] = [
+      ("ALLOW_WRITES", "写文件", "file-pen"),
+      ("ALLOW_SHELL", "命令执行", "terminal"),
+      ("ALLOW_SCREENSHOT", "截屏", "camera"),
+      ("ALLOW_OPEN", "打开应用 / URL", "external-link"),
+      ("ALLOW_APPLESCRIPT", "AppleScript 自动化", "bot"),
+      ("ALLOW_GUI", "鼠标键盘（仅 Windows）", "mouse"),
     ]
-    for (key, label) in perms {
+    for (key, label, iconName) in perms {
       let on = env[key] == "1"
-      let item = menu.addItem(withTitle: "\(on ? "✓ " : "　")\(label)", action: #selector(togglePerm(_:)), keyEquivalent: "")
+      let item = NSMenuItem(title: "\(on ? "✓ " : "　")\(label)", action: #selector(togglePerm(_:)), keyEquivalent: "")
       item.target = self
+      item.image = icon(iconName)
       item.representedObject = key
+      menu.addItem(item)
     }
-    let hint = menu.addItem(withTitle: "（权限开关点击后自动重启服务生效）", action: nil, keyEquivalent: "")
-    hint.isEnabled = false
+    menu.addItem(disabledInfo("　　点击切换 · 自动重启服务后生效", font: NSFont.systemFont(ofSize: 11)))
 
+    // ── 分区：服务 ──
     menu.addItem(.separator())
+    menu.addItem(sectionHeader("服务"))
     let restart = menu.addItem(withTitle: "重启服务", action: #selector(restartAction(_:)), keyEquivalent: "r")
     restart.target = self
+    restart.image = icon("refresh-cw")
     let stop = menu.addItem(withTitle: "停止服务与隧道", action: #selector(stopAction(_:)), keyEquivalent: "")
     stop.target = self
+    stop.image = icon("power")
     stop.isEnabled = serverUp || tunnelUp
 
+    // ── 分区：资源 ──
     menu.addItem(.separator())
+    menu.addItem(sectionHeader("资源"))
     let logs = menu.addItem(withTitle: "打开日志文件夹", action: #selector(openLogs(_:)), keyEquivalent: "")
     logs.target = self
+    logs.image = icon("folder-open")
     let projItem = menu.addItem(withTitle: "打开项目文件夹", action: #selector(openProj(_:)), keyEquivalent: "")
     projItem.target = self
+    projItem.image = icon("folder-code")
 
     menu.addItem(.separator())
     let quit = menu.addItem(withTitle: "退出（服务保持运行）", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     quit.target = NSApp
+    quit.image = icon("log-out")
 
     statusItem.menu = menu
   }
