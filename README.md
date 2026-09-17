@@ -84,3 +84,16 @@ cd app && swiftc menubar/main.swift -o /tmp/mcp-menubar
 ```
 
 然后把二进制放进 `MCP本地控制.app/Contents/MacOS/mcp-menubar`（`Info.plist` 中 `CFBundleExecutable` 需与之对应），再将整个 `.app` 拷贝到 `/Applications`。服务与隧道的启动日志位于 `.mcp-logs/app-server.log` 与 `.mcp-logs/app-tunnel.log`。
+
+## Windows 托盘控制中心（amd64）
+
+`app/windows/` 提供功能对等的任务栏托盘控制中心（中文界面），源码单文件 `mcp-tray.cs`，在目标 Windows 机器上用**系统自带**的 .NET Framework 编译器现场编译，无需安装 SDK：
+
+root@device:/#
+```bat
+cd app\windows
+setup-tunnel.bat   && rem 一次性: 登录 Cloudflare、建隧道、绑子域、写配置、改 .env
+install.bat        && rem 编译 MCP本地控制.exe、建桌面快捷方式、可选开机自启、启动
+```
+
+托盘菜单支持复制连接器 URL、权限开关（自动改 `.env` 并重启服务）、重启/停止服务与隧道、打开日志与项目文件夹；图标颜色实时反映服务与隧道状态。详见 `app/windows/README-WIN.md`。
