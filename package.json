@@ -26,5 +26,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "allowScripts": {
+    "cloudflared@0.7.3": true
   }
 }

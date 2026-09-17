@@ -65,3 +65,22 @@ HOST=127.0.0.1
 AppleScript 操作应用界面时, 请在系统设置 > 隐私与安全性中为启动服务的应用授予所需的自动化、辅助功能权限; 截图需要屏幕录制权限。MCP 密钥授权不替代 macOS 系统授权, 系统弹窗需要用户确认。
 
 `move_mouse`、`mouse_click`、`press_keys`、`type_text`、`get_cursor_position` 目前仅支持 Windows; Mac 应用自动化使用 `run_applescript`。
+
+## macOS 菜单栏控制中心 App
+
+`app/` 内提供一个常驻菜单栏的中文控制中心 `MCP本地控制.app`（Swift 编写，源码见 `app/menubar/main.swift`）：
+
+- 启动 App 会幂等拉起 MCP 服务与 Cloudflare 隧道（已运行则跳过），并常驻菜单栏；
+- 图标实时显示状态（● 绿 = 全部正常，◐ 橙 = 部分运行，○ 灰 = 全部停止），每 5 秒刷新；
+- 菜单内可一键复制连接器 URL（含密钥）、查看脱敏 URL；
+- 可直接开关写文件 / 命令执行 / 截屏 / 打开应用 / AppleScript / 鼠标键盘等权限，点击即改写 `.env` 并自动重启服务生效；
+- 提供重启服务、停止服务与隧道、打开日志与项目文件夹等快捷操作。
+
+从源码构建：
+
+root@device:/#
+```bash
+cd app && swiftc menubar/main.swift -o /tmp/mcp-menubar
+```
+
+然后把二进制放进 `MCP本地控制.app/Contents/MacOS/mcp-menubar`（`Info.plist` 中 `CFBundleExecutable` 需与之对应），再将整个 `.app` 拷贝到 `/Applications`。服务与隧道的启动日志位于 `.mcp-logs/app-server.log` 与 `.mcp-logs/app-tunnel.log`。

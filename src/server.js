@@ -1199,7 +1199,15 @@ function createLocalControlServer(authContext = { scopes: [] }) {
     name: "chatgpt-local-control",
     version: "0.1.0",
     instructions:
-      `Use these tools to inspect and control the user's ${platformLabel()} only when the user explicitly asks. Read-only tools do not require auth. Privileged tools require OAuth scope local.control or the fallback control_pin.`,
+      `Use these tools to inspect and control the user's ${platformLabel()} only when the user explicitly asks. Read-only tools do not require auth. Privileged tools require OAuth scope local.control or the fallback control_pin.
+
+Working practices:
+- Call computer_status first to learn allowed file roots and which capabilities are enabled.
+- Missing tool or "unknown tool" error means that capability is disabled in server config, not a connection problem. Call computer_status, tell the user which ALLOW_* flag in the server's .env enables it (writes=ALLOW_WRITES, shell=ALLOW_SHELL (+ALLOW_UNSAFE_SHELL for arbitrary commands), screenshot=ALLOW_SCREENSHOT, open=ALLOW_OPEN, applescript=ALLOW_APPLESCRIPT, gui=ALLOW_GUI), and have them edit .env then restart. If tools/list is empty or the endpoint is unreachable, the connector URL is wrong or missing ?secret-key=; ask the user for the exact URL instead of retrying blindly.
+- For complex or repeated operations, do not repeat long one-liners. Write a reusable script once into a folder under an allowed root (for example write_file to scripts/run-task.sh, remember to chmod +x via run_command) and afterwards invoke it with run_command and short arguments.
+- Command output is truncated around 100k characters. Prefer narrowing with head/tail/grep/wc, or write full output to a file and read it back in chunks with read_file.
+- run_command accepts timeoutMs up to 120000 for slow builds or installs; pass it instead of letting the 15s default kill the job.
+- On macOS, GUI automation goes through run_applescript; move_mouse/mouse_click/press_keys/type_text/get_cursor_position are Windows-only.`,
   });
 
   server.registerTool(
