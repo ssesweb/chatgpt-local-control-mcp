@@ -348,6 +348,12 @@ namespace McpTray
 
         Image IconFor(string name)
         {
+            try { return BuildIcon(name); }
+            catch { return null; }
+        }
+
+        Image BuildIcon(string name)
+        {
             byte[] data;
             if (!IconPng.Data.TryGetValue(name, out data)) return null;
             Image src;
@@ -364,7 +370,8 @@ namespace McpTray
                 new float[] { 0, 0, 0, 0, cr },
                 new float[] { 0, 0, 0, 0, cg },
                 new float[] { 0, 0, 0, 0, cb },
-                new float[] { 0, 0, 0, 1, 0 }
+                new float[] { 0, 0, 0, 1, 0 },
+                new float[] { 0, 0, 0, 0, 1 }
             });
             Bitmap outB = new Bitmap(16, 16);
             using (Graphics g = Graphics.FromImage(outB))
