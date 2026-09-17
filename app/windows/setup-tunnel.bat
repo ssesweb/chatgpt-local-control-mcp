@@ -48,8 +48,8 @@ echo [4/5] 写入隧道配置...
 
 echo.
 echo [5/5] 更新 .env（PUBLIC_MCP_URL / TUNNEL_MODE）...
-node patch-env.js PUBLIC_MCP_URL https://%SUB%/mcp
-node patch-env.js TUNNEL_MODE manual
+node patch-env.cjs PUBLIC_MCP_URL https://%SUB%/mcp
+node patch-env.cjs TUNNEL_MODE manual
 if errorlevel 1 (
   echo 请手动把 .env 中 PUBLIC_MCP_URL 设为 https://%SUB%/mcp ，TUNNEL_MODE 设为 manual
 )
