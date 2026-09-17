@@ -31,7 +31,6 @@ namespace McpTray
         readonly string proj;
         readonly string envPath;
         readonly string logDir;
-        readonly string tunnelName = "chatgpt-local-mcp";
 
         NotifyIcon tray;
         ContextMenuStrip menu;
@@ -214,7 +213,9 @@ namespace McpTray
         {
             string cf = FindCloudflared();
             if (cf == null) { Balloon("未找到 cloudflared，请先在项目目录执行 npm install"); return; }
-            RunHidden("cmd.exe", "/c \"" + cf + "\" tunnel run " + tunnelName + " >> \"" + logDir + "\\app-tunnel.log\" 2>&1");
+            // 无参运行：cloudflared 默认读取 %USERPROFILE%\.cloudflared\config.yml
+            // （由 setup-tunnel.bat 生成），隧道 ID 与凭据均来自配置文件
+            RunHidden("cmd.exe", "/c \"" + cf + "\" tunnel run >> \"" + logDir + "\\app-tunnel.log\" 2>&1");
         }
 
         string FindCloudflared()
