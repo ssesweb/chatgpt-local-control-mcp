@@ -20,6 +20,16 @@ namespace McpTray
         [STAThread]
         static void Main()
         {
+            bool createdNew;
+            using (Mutex m = new Mutex(true, "MCPLocalTray-SingleInstance", out createdNew))
+            {
+                if (!createdNew)
+                {
+                    MessageBox.Show("MCP 本地控制已在运行。\n\n请查看任务栏右下角托盘（可能折叠在「^」隐藏图标区），双击圆点图标即可复制连接器 URL。",
+                        "MCP 本地控制", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+            }
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new TrayContext());
@@ -39,6 +49,7 @@ namespace McpTray
         Icon iconGreen, iconOrange, iconGray;
         bool serverUp;
         bool tunnelUp;
+        DateTime lastEnsure = DateTime.MinValue;
 
         public TrayContext()
         {
@@ -123,6 +134,17 @@ namespace McpTray
 
         void RefreshStatus()
         {
+            // 自愈：服务或隧道挂了自动拉起（15 秒节流，避免反复失败刷日志）
+            bool needEnsure = false;
+            lock (this)
+            {
+                if ((DateTime.Now - lastEnsure).TotalSeconds > 15) { lastEnsure = DateTime.Now; needEnsure = true; }
+            }
+            if (needEnsure)
+            {
+                if (!ServerUp()) StartServer();
+                if (!TunnelUp()) StartTunnel();
+            }
             ThreadPool.QueueUserWorkItem(delegate
             {
                 bool s = ServerUp();
