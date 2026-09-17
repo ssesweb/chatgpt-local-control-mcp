@@ -8,9 +8,9 @@ if not exist "%CSC%" (
   echo 未找到 .NET Framework 编译器 csc.exe
   exit /b 1
 )
-"%CSC%" /nologo /target:winexe /out:"MCP本地控制.exe" /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Management.dll mcp-tray.cs
+"%CSC%" /nologo /target:winexe /out:"MCP本地控制.exe" /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Management.dll mcp-tray.cs IconPng.cs
 if errorlevel 1 (
-  echo 编译失败，请检查 mcp-tray.cs
+  echo 编译失败，请检查 mcp-tray.cs IconPng.cs
   exit /b 1
 )
 echo 编译完成: MCP本地控制.exe

@@ -6,8 +6,10 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Management;
+using Microsoft.Win32;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -331,6 +333,51 @@ namespace McpTray
             catch (Exception ex) { Balloon("启动失败：" + ex.Message); }
         }
 
+        // ── 图标（lucide 模板式，随系统深浅色主题反色） ──
+
+        static bool IsDarkTheme()
+        {
+            try
+            {
+                object v = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize").GetValue("AppsUseLightTheme");
+                return Convert.ToInt32(v) == 0;
+            }
+            catch { return true; }
+        }
+
+        Image IconFor(string name)
+        {
+            byte[] data;
+            if (!IconPng.Data.TryGetValue(name, out data)) return null;
+            Image src;
+            using (MemoryStream ms = new MemoryStream(data))
+            {
+                src = Image.FromStream(ms);
+                Bitmap copied = new Bitmap(src);
+                src.Dispose();
+                src = copied;
+            }
+            Color c = IsDarkTheme() ? Color.FromArgb(235, 235, 235) : Color.FromArgb(60, 60, 60);
+            float cr = c.R / 255f, cg = c.G / 255f, cb = c.B / 255f;
+            ColorMatrix m = new ColorMatrix(new float[][] {
+                new float[] { 0, 0, 0, 0, cr },
+                new float[] { 0, 0, 0, 0, cg },
+                new float[] { 0, 0, 0, 0, cb },
+                new float[] { 0, 0, 0, 1, 0 }
+            });
+            Bitmap outB = new Bitmap(16, 16);
+            using (Graphics g = Graphics.FromImage(outB))
+            {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                ImageAttributes attrs = new ImageAttributes();
+                attrs.SetColorMatrix(m);
+                g.DrawImage(src, new Rectangle(0, 0, 16, 16), 0, 0, 32, 32, GraphicsUnit.Pixel, attrs);
+            }
+            src.Dispose();
+            return outB;
+        }
+
         // ── UI 帮助 ──
 
         void BeginUI(MethodInvoker action)
@@ -365,22 +412,22 @@ namespace McpTray
             if (masked != null) menu.Items.Add(InfoItem(masked));
             menu.Items.Add(new ToolStripSeparator());
 
-            menu.Items.Add(new ToolStripMenuItem("复制连接器 URL（含密钥）", null, delegate { CopyUrl(); }));
+            menu.Items.Add(new ToolStripMenuItem("复制连接器 URL（含密钥）", IconFor("link-2"), delegate { CopyUrl(); }, Keys.Control | Keys.C));
 
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(InfoItem("权限"));
             string[,] perms = new string[,] {
-                { "ALLOW_WRITES", "写文件" },
-                { "ALLOW_SHELL", "命令执行（run_command / run_powershell）" },
-                { "ALLOW_SCREENSHOT", "截屏" },
-                { "ALLOW_OPEN", "打开应用 / URL" },
-                { "ALLOW_GUI", "鼠标键盘" }
+                { "ALLOW_WRITES", "写文件", "file-pen" },
+                { "ALLOW_SHELL", "命令执行（run_command / run_powershell）", "terminal" },
+                { "ALLOW_SCREENSHOT", "截屏", "camera" },
+                { "ALLOW_OPEN", "打开应用 / URL", "external-link" },
+                { "ALLOW_GUI", "鼠标键盘", "mouse" }
             };
             for (int i = 0; i < perms.GetLength(0); i++)
             {
                 string key = perms[i, 0];
                 string label = perms[i, 1];
-                ToolStripMenuItem it = new ToolStripMenuItem(label, null, delegate { TogglePerm(key); });
+                ToolStripMenuItem it = new ToolStripMenuItem(label, IconFor(perms[i, 2]), delegate { TogglePerm(key); });
                 it.Checked = EnvGet(key) == "1";
                 menu.Items.Add(it);
             }
@@ -388,19 +435,19 @@ namespace McpTray
 
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(InfoItem("服务"));
-            menu.Items.Add(new ToolStripMenuItem("重启服务", null, delegate { RestartServer(); }, Keys.Control | Keys.R));
-            ToolStripMenuItem stop = new ToolStripMenuItem("停止服务与隧道", null, delegate { StopAll(); Balloon("已停止服务与隧道"); RefreshStatus(); });
+            menu.Items.Add(new ToolStripMenuItem("重启服务", IconFor("refresh-cw"), delegate { RestartServer(); }, Keys.Control | Keys.R));
+            ToolStripMenuItem stop = new ToolStripMenuItem("停止服务与隧道", IconFor("power"), delegate { StopAll(); Balloon("已停止服务与隧道"); RefreshStatus(); });
             stop.Enabled = serverUp || tunnelUp;
             menu.Items.Add(stop);
 
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(InfoItem("资源"));
-            menu.Items.Add(new ToolStripMenuItem("打开日志文件夹", null, delegate { Process.Start("explorer.exe", "\"" + logDir + "\""); }));
-            menu.Items.Add(new ToolStripMenuItem("打开项目文件夹", null, delegate { Process.Start("explorer.exe", "\"" + proj + "\""); }));
+            menu.Items.Add(new ToolStripMenuItem("打开日志文件夹", IconFor("folder-open"), delegate { Process.Start("explorer.exe", "\"" + logDir + "\""); }));
+            menu.Items.Add(new ToolStripMenuItem("打开项目文件夹", IconFor("folder-code"), delegate { Process.Start("explorer.exe", "\"" + proj + "\""); }));
 
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(InfoItem("退出程序后，服务与隧道保持运行"));
-            menu.Items.Add(new ToolStripMenuItem("退出", null, delegate { ExitMenuAndApp(); }, Keys.Control | Keys.Q));
+            menu.Items.Add(new ToolStripMenuItem("退出", IconFor("log-out"), delegate { ExitMenuAndApp(); }, Keys.Control | Keys.Q));
         }
 
         void ExitMenuAndApp()
