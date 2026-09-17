@@ -285,7 +285,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     projItem.image = icon("folder-code")
 
     menu.addItem(.separator())
-    let quit = menu.addItem(withTitle: "退出（服务保持运行）", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+    menu.addItem(disabledInfo("　　退出 App 后，服务与隧道保持运行", font: NSFont.systemFont(ofSize: 11)))
+    let quit = menu.addItem(withTitle: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     quit.target = NSApp
     quit.image = icon("log-out")
 
