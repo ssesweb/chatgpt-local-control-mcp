@@ -953,7 +953,7 @@ const TOOL_DESCRIPTORS = [
         path: { type: "string", minLength: 1 },
         content: { type: "string" },
         mode: { type: "string", enum: ["create", "overwrite", "append"] },
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       required: ["path", "content"],
       additionalProperties: false,
@@ -981,7 +981,7 @@ const TOOL_DESCRIPTORS = [
         },
         cwd: { type: "string", description: "Working directory. Must be inside LOCAL_CONTROL_ROOTS." },
         timeoutMs: { type: "integer", minimum: 1000, maximum: 120000 },
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       required: ["command"],
       additionalProperties: false,
@@ -1001,7 +1001,7 @@ const TOOL_DESCRIPTORS = [
     inputSchema: {
       type: "object",
       properties: {
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       additionalProperties: false,
     },
@@ -1021,7 +1021,7 @@ const TOOL_DESCRIPTORS = [
       type: "object",
       properties: {
         target: { type: "string", minLength: 1, description: "A URL, file path, folder path, or app name/path." },
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       required: ["target"],
       additionalProperties: false,
@@ -1043,7 +1043,7 @@ const TOOL_DESCRIPTORS = [
       properties: {
         script: { type: "string", minLength: 1 },
         timeoutMs: { type: "integer", minimum: 1000, maximum: 60000 },
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       required: ["script"],
       additionalProperties: false,
@@ -1066,7 +1066,7 @@ const TOOL_DESCRIPTORS = [
       properties: {
         script: { type: "string", minLength: 1 },
         timeoutMs: { type: "integer", minimum: 1000, maximum: 120000 },
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       required: ["script"],
       additionalProperties: false,
@@ -1087,7 +1087,7 @@ const TOOL_DESCRIPTORS = [
     inputSchema: {
       type: "object",
       properties: {
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       additionalProperties: false,
     },
@@ -1109,7 +1109,7 @@ const TOOL_DESCRIPTORS = [
       properties: {
         x: { type: "integer", minimum: -32768, maximum: 32767 },
         y: { type: "integer", minimum: -32768, maximum: 32767 },
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       required: ["x", "y"],
       additionalProperties: false,
@@ -1134,7 +1134,7 @@ const TOOL_DESCRIPTORS = [
         y: { type: "integer", minimum: -32768, maximum: 32767 },
         button: { type: "string", enum: ["left", "right", "middle"] },
         clicks: { type: "integer", minimum: 1, maximum: 3 },
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       required: ["x", "y"],
       additionalProperties: false,
@@ -1157,7 +1157,7 @@ const TOOL_DESCRIPTORS = [
       properties: {
         keys: { type: "array", items: { type: "string" }, minItems: 1 },
         holdMs: { type: "integer", minimum: 10, maximum: 2000 },
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       required: ["keys"],
       additionalProperties: false,
@@ -1180,7 +1180,7 @@ const TOOL_DESCRIPTORS = [
       properties: {
         text: { type: "string" },
         restoreClipboard: { type: "boolean" },
-        control_pin: { type: "string", description: "Fallback local PIN. Not needed when the app is OAuth-authorized." },
+        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
       },
       required: ["text"],
       additionalProperties: false,
