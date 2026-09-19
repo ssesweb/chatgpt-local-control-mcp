@@ -1202,7 +1202,7 @@ function createLocalControlServer(authContext = { scopes: [] }) {
       `Use these tools to inspect and control the user's ${platformLabel()} only when the user explicitly asks. Read-only tools do not require auth. Privileged tools require OAuth scope local.control or the fallback control_pin.
 
 Working practices:
-- Call computer_status first to learn allowed file roots and which capabilities are enabled.
+- FIRST STEP after connecting: call computer_status — it returns hints (suggested first reads, platform notes, reusable-script guidance) tailored to this machine.
 - Missing tool or "unknown tool" error means that capability is disabled in server config, not a connection problem. Call computer_status, tell the user which ALLOW_* flag in the server's .env enables it (writes=ALLOW_WRITES, shell=ALLOW_SHELL (+ALLOW_UNSAFE_SHELL for arbitrary commands), screenshot=ALLOW_SCREENSHOT, open=ALLOW_OPEN, applescript=ALLOW_APPLESCRIPT, gui=ALLOW_GUI), and have them edit .env then restart. If tools/list is empty or the endpoint is unreachable, the connector URL is wrong or missing ?secret-key=; ask the user for the exact URL instead of retrying blindly.
 - For complex or repeated operations, do not repeat long one-liners. Write a reusable script once into a folder under an allowed root (for example write_file to scripts/run-task.sh, remember to chmod +x via run_command) and afterwards invoke it with run_command and short arguments.
 - Command output is truncated around 100k characters. Prefer narrowing with head/tail/grep/wc, or write full output to a file and read it back in chunks with read_file.
@@ -1225,6 +1225,7 @@ Working practices:
         cwd: z.string(),
         allowedRoots: z.array(z.string()),
         capabilities: z.record(z.boolean()),
+        hints: z.array(z.string()),
         uptimeSeconds: z.number(),
         startedAt: z.string(),
       },
@@ -1260,6 +1261,15 @@ Working practices:
           oauthApprovalPinRequired: CONFIG.requireOAuthApprovalPin && hasConfiguredControlPin(),
           pinFallbackForControl: hasConfiguredControlPin(),
         },
+        hints: [
+          "首次使用：先 read_file 查看 LOCAL_CONTROL_ROOTS 内的关键目录或项目 README，再动手改东西。",
+          "文件都在 allowedRoots 内才能访问；需要更多目录时让用户修改 .env 的 LOCAL_CONTROL_ROOTS 并重启服务。",
+          PLATFORM === "darwin"
+            ? "GUI 自动化用 run_applescript；截屏与按键控制需要用户在系统设置里授予屏幕录制/辅助功能权限。"
+            : "GUI 自动化用 move_mouse/mouse_click/press_keys/type_text（Windows 专用）。",
+          "重复或复杂操作：先 write_file 写成可复用脚本（如 scripts/run-task.sh），chmod +x 后用 run_command 短参数调用。",
+          "run_command 可传 timeoutMs（最高 120000）；输出超过上限会被截断，建议配合 head/tail/grep 或落盘后 read_file 分段读取。",
+        ],
         uptimeSeconds: Math.round(process.uptime()),
         startedAt: STARTED_AT.toISOString(),
         });
