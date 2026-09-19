@@ -251,7 +251,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       ("ALLOW_SCREENSHOT", "截屏", "camera"),
       ("ALLOW_OPEN", "打开应用 / URL", "external-link"),
       ("ALLOW_APPLESCRIPT", "AppleScript 自动化", "bot"),
-      ("ALLOW_GUI", "鼠标键盘（仅 Windows）", "mouse"),
     ]
     for (key, label, iconName) in perms {
       let on = env[key] == "1"
