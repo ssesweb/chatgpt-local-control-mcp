@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   var statusItem: NSStatusItem!
   var menuOpen = false
   var timer: Timer?
+  var lastEnsure = Date.distantPast
 
   // MARK: 启动
 
@@ -164,6 +165,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   // MARK: 状态图标与菜单
 
   func refreshStatus() {
+    // 自愈：服务或隧道挂了自动拉起（15 秒节流，避免反复失败刷日志）
+    let needEnsure: Bool = { objc_sync_enter(self); defer { objc_sync_exit(self) }
+      if Date().timeIntervalSince(lastEnsure) > 15 { lastEnsure = Date(); return true }; return false }()
+    if needEnsure {
+      if !Self.serverUp() { startServer() }
+      if !Self.processUp(tunnelPattern) { startTunnel() }
+    }
     DispatchQueue.global().async {
       let serverUp = Self.serverUp()
       let tunnelUp = Self.processUp(self.tunnelPattern)
