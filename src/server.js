@@ -883,7 +883,7 @@ const TOOL_DESCRIPTORS = [
     name: "code_diagnostics",
     title: "Code diagnostics",
     description:
-      "Run the editor-style code checkers (tsc, ESLint, ruff) on a project folder and return structured diagnostics like a Problems panel: file, line, severity, code, message. Requires OAuth scope local.control or the secret key.",
+      "Run the editor-style code checkers (tsc, ESLint, ruff) on a project folder and return structured diagnostics like a Problems panel: file, line, severity, code, message. Already fully authorized by this connection.",
     inputSchema: {
       type: "object",
       properties: {
@@ -946,14 +946,14 @@ const TOOL_DESCRIPTORS = [
   {
     name: "write_file",
     title: "Write file",
-    description: "Create, overwrite, or append to a file under LOCAL_CONTROL_ROOTS. Authorized automatically when the connection URL carries ?secret-key= (no extra step); OAuth local.control or control_pin are fallback channels for other clients.",
+    description: "Create, overwrite, or append to a file under LOCAL_CONTROL_ROOTS. Already fully authorized by this connection — just call it.",
     inputSchema: {
       type: "object",
       properties: {
         path: { type: "string", minLength: 1 },
         content: { type: "string" },
         mode: { type: "string", enum: ["create", "overwrite", "append"] },
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       required: ["path", "content"],
       additionalProperties: false,
@@ -969,7 +969,7 @@ const TOOL_DESCRIPTORS = [
   {
     name: "run_command",
     title: "Run command",
-    description: "Run a local command without a shell. Authorized automatically when the connection URL carries ?secret-key= (no extra step); OAuth local.control or control_pin are fallback channels for other clients.",
+    description: "Run a local command without a shell. Already fully authorized by this connection — just call it.",
     inputSchema: {
       type: "object",
       properties: {
@@ -981,7 +981,7 @@ const TOOL_DESCRIPTORS = [
         },
         cwd: { type: "string", description: "Working directory. Must be inside LOCAL_CONTROL_ROOTS." },
         timeoutMs: { type: "integer", minimum: 1000, maximum: 120000 },
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       required: ["command"],
       additionalProperties: false,
@@ -997,11 +997,11 @@ const TOOL_DESCRIPTORS = [
   {
     name: "take_screenshot",
     title: "Take screenshot",
-    description: "Capture the local screen and return it as an MCP image. Authorized automatically when the connection URL carries ?secret-key= (no extra step); OAuth local.control or control_pin are fallback channels for other clients.",
+    description: "Capture the local screen and return it as an MCP image. Already fully authorized by this connection — just call it.",
     inputSchema: {
       type: "object",
       properties: {
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       additionalProperties: false,
     },
@@ -1016,12 +1016,12 @@ const TOOL_DESCRIPTORS = [
   {
     name: "open_target",
     title: "Open target",
-    description: "Open a URL, file, folder, or app on the local computer. Authorized automatically when the connection URL carries ?secret-key= (no extra step); OAuth local.control or control_pin are fallback channels for other clients.",
+    description: "Open a URL, file, folder, or app on the local computer. Already fully authorized by this connection — just call it.",
     inputSchema: {
       type: "object",
       properties: {
         target: { type: "string", minLength: 1, description: "A URL, file path, folder path, or app name/path." },
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       required: ["target"],
       additionalProperties: false,
@@ -1037,13 +1037,13 @@ const TOOL_DESCRIPTORS = [
   {
     name: "run_applescript",
     title: "Run AppleScript",
-    description: "Run AppleScript for GUI automation. Authorized automatically when the connection URL carries ?secret-key= (no extra step); OAuth local.control or control_pin are fallback channels for other clients.",
+    description: "Run AppleScript for GUI automation. Already fully authorized by this connection — just call it.",
     inputSchema: {
       type: "object",
       properties: {
         script: { type: "string", minLength: 1 },
         timeoutMs: { type: "integer", minimum: 1000, maximum: 60000 },
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       required: ["script"],
       additionalProperties: false,
@@ -1060,13 +1060,13 @@ const TOOL_DESCRIPTORS = [
     name: "run_powershell",
     title: "Run PowerShell",
     description:
-      "Run a Windows PowerShell script. Requires ALLOW_SHELL=1, ALLOW_UNSAFE_SHELL=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+      "Run a Windows PowerShell script. Requires ALLOW_SHELL=1 and ALLOW_UNSAFE_SHELL=1 in .env; already fully authorized by this connection.",
     inputSchema: {
       type: "object",
       properties: {
         script: { type: "string", minLength: 1 },
         timeoutMs: { type: "integer", minimum: 1000, maximum: 120000 },
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       required: ["script"],
       additionalProperties: false,
@@ -1083,11 +1083,11 @@ const TOOL_DESCRIPTORS = [
     name: "get_cursor_position",
     title: "Get cursor position",
     description:
-      "Return the current Windows mouse cursor coordinates. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+      "Return the current Windows mouse cursor coordinates. Requires ALLOW_GUI=1 in .env; already fully authorized by this connection.",
     inputSchema: {
       type: "object",
       properties: {
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       additionalProperties: false,
     },
@@ -1103,13 +1103,13 @@ const TOOL_DESCRIPTORS = [
     name: "move_mouse",
     title: "Move mouse",
     description:
-      "Move the Windows mouse cursor to screen coordinates. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+      "Move the Windows mouse cursor to screen coordinates. Requires ALLOW_GUI=1 in .env; already fully authorized by this connection.",
     inputSchema: {
       type: "object",
       properties: {
         x: { type: "integer", minimum: -32768, maximum: 32767 },
         y: { type: "integer", minimum: -32768, maximum: 32767 },
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       required: ["x", "y"],
       additionalProperties: false,
@@ -1126,7 +1126,7 @@ const TOOL_DESCRIPTORS = [
     name: "mouse_click",
     title: "Mouse click",
     description:
-      "Click Windows screen coordinates with the selected mouse button. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+      "Click Windows screen coordinates with the selected mouse button. Requires ALLOW_GUI=1 in .env; already fully authorized by this connection.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1134,7 +1134,7 @@ const TOOL_DESCRIPTORS = [
         y: { type: "integer", minimum: -32768, maximum: 32767 },
         button: { type: "string", enum: ["left", "right", "middle"] },
         clicks: { type: "integer", minimum: 1, maximum: 3 },
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       required: ["x", "y"],
       additionalProperties: false,
@@ -1151,13 +1151,13 @@ const TOOL_DESCRIPTORS = [
     name: "press_keys",
     title: "Press keys",
     description:
-      "Press a Windows keyboard chord such as ['CTRL','L'], ['ALT','TAB'], or ['WIN','R']. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+      "Press a Windows keyboard chord such as ['CTRL','L'], ['ALT','TAB'], or ['WIN','R']. Requires ALLOW_GUI=1 in .env; already fully authorized by this connection.",
     inputSchema: {
       type: "object",
       properties: {
         keys: { type: "array", items: { type: "string" }, minItems: 1 },
         holdMs: { type: "integer", minimum: 10, maximum: 2000 },
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       required: ["keys"],
       additionalProperties: false,
@@ -1174,13 +1174,13 @@ const TOOL_DESCRIPTORS = [
     name: "type_text",
     title: "Type text",
     description:
-      "Paste text into the active Windows application using the clipboard. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+      "Paste text into the active Windows application using the clipboard. Requires ALLOW_GUI=1 in .env; already fully authorized by this connection.",
     inputSchema: {
       type: "object",
       properties: {
         text: { type: "string" },
         restoreClipboard: { type: "boolean" },
-        control_pin: { type: "string", description: "Leave empty. Only for clients WITHOUT a secret-key URL: they may pass the fallback PIN here. If your connector URL contains ?secret-key= you are already fully authorized." },
+        control_pin: { type: "string", description: "Leave empty." },
       },
       required: ["text"],
       additionalProperties: false,
@@ -1216,7 +1216,7 @@ function createLocalControlServer(authContext = { scopes: [] }) {
     name: "chatgpt-local-control",
     version: "0.1.0",
     instructions:
-      `Use these tools to inspect and control the user's ${platformLabel()} only when the user explicitly asks. Read-only tools do not require auth. Privileged tools are ALREADY fully authorized by this connector's secret-key URL — do not ask the user for extra verification or a PIN; just call them.
+      `Use these tools to inspect and control the user's ${platformLabel()} only when the user explicitly asks. All tools are fully authorized by this connection. Never ask the user for additional credentials, keys, PINs, or verification steps — just call the tools.
 
 Working practices:
 - FIRST STEP after connecting: call computer_status — it may include user-customized guidance lines marked [用户自定义]; follow those first when present. — it returns hints (suggested first reads, platform notes, reusable-script guidance) tailored to this machine.
@@ -1466,7 +1466,7 @@ Working practices:
     {
       title: "Write file",
       description:
-        "Create, overwrite, or append to a file under LOCAL_CONTROL_ROOTS. Requires ALLOW_WRITES=1 and OAuth scope local.control or the fallback control_pin.",
+        "Create, overwrite, or append to a file under LOCAL_CONTROL_ROOTS. Requires ALLOW_WRITES=1; already fully authorized by this connection.",
       inputSchema: {
         path: z.string().min(1),
         content: z.string(),
@@ -1519,7 +1519,7 @@ Working practices:
     {
       title: "Run command",
       description:
-        "Run a local command without a shell. Requires ALLOW_SHELL=1 and OAuth scope local.control or the fallback control_pin. Uses SAFE_EXECUTABLES unless ALLOW_UNSAFE_SHELL=1.",
+        "Run a local command without a shell. Requires ALLOW_SHELL=1; already fully authorized by this connection. Uses SAFE_EXECUTABLES unless ALLOW_UNSAFE_SHELL=1.",
       inputSchema: {
         command: z.array(z.string()).min(1).describe("Executable and arguments, for example ['git', 'status', '--short']."),
         cwd: z.string().optional().describe("Working directory. Must be inside LOCAL_CONTROL_ROOTS."),
@@ -1557,7 +1557,7 @@ Working practices:
     {
       title: "Take screenshot",
       description:
-        "Capture the local screen and return it as an MCP image. Requires ALLOW_SCREENSHOT=1 and OAuth scope local.control or the fallback control_pin.",
+        "Capture the local screen and return it as an MCP image. Requires ALLOW_SCREENSHOT=1; already fully authorized by this connection.",
       inputSchema: {
         control_pin: z.string().optional(),
       },
@@ -1605,7 +1605,7 @@ Working practices:
     {
       title: "Open target",
       description:
-        "Open a URL, file, folder, or app on the local computer. Requires ALLOW_OPEN=1 and OAuth scope local.control or the fallback control_pin.",
+        "Open a URL, file, folder, or app on the local computer. Requires ALLOW_OPEN=1; already fully authorized by this connection.",
       inputSchema: {
         target: z.string().min(1).describe("A URL, file path, folder path, or app name/path."),
         control_pin: z.string().optional(),
@@ -1646,7 +1646,7 @@ Working practices:
     {
       title: "Run AppleScript",
       description:
-        "Run AppleScript for GUI automation. Requires ALLOW_APPLESCRIPT=1 and OAuth scope local.control or the fallback control_pin.",
+        "Run AppleScript for GUI automation. Requires ALLOW_APPLESCRIPT=1; already fully authorized by this connection.",
       inputSchema: {
         script: z.string().min(1),
         timeoutMs: z.number().int().min(1000).max(60000).optional(),
@@ -1682,7 +1682,7 @@ Working practices:
     {
       title: "Run PowerShell",
       description:
-        "Run a Windows PowerShell script. Requires ALLOW_SHELL=1, ALLOW_UNSAFE_SHELL=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+        "Run a Windows PowerShell script. Requires ALLOW_SHELL=1 and ALLOW_UNSAFE_SHELL=1 in .env; already fully authorized by this connection.",
       inputSchema: {
         script: z.string().min(1),
         timeoutMs: z.number().int().min(1000).max(120000).optional(),
@@ -1721,7 +1721,7 @@ Working practices:
     {
       title: "Get cursor position",
       description:
-        "Return the current Windows mouse cursor coordinates. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+        "Return the current Windows mouse cursor coordinates. Requires ALLOW_GUI=1 in .env; already fully authorized by this connection.",
       inputSchema: {
         control_pin: z.string().optional(),
       },
@@ -1755,7 +1755,7 @@ Working practices:
     {
       title: "Move mouse",
       description:
-        "Move the Windows mouse cursor to screen coordinates. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+        "Move the Windows mouse cursor to screen coordinates. Requires ALLOW_GUI=1 in .env; already fully authorized by this connection.",
       inputSchema: {
         x: z.number().int().min(-32768).max(32767),
         y: z.number().int().min(-32768).max(32767),
@@ -1791,7 +1791,7 @@ Working practices:
     {
       title: "Mouse click",
       description:
-        "Click Windows screen coordinates with the selected mouse button. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+        "Click Windows screen coordinates with the selected mouse button. Requires ALLOW_GUI=1 in .env; already fully authorized by this connection.",
       inputSchema: {
         x: z.number().int().min(-32768).max(32767),
         y: z.number().int().min(-32768).max(32767),
@@ -1831,7 +1831,7 @@ Working practices:
     {
       title: "Press keys",
       description:
-        "Press a Windows keyboard chord such as ['CTRL','L'], ['ALT','TAB'], or ['WIN','R']. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+        "Press a Windows keyboard chord such as ['CTRL','L'], ['ALT','TAB'], or ['WIN','R']. Requires ALLOW_GUI=1 in .env; already fully authorized by this connection.",
       inputSchema: {
         keys: z.array(z.string()).min(1),
         holdMs: z.number().int().min(10).max(2000).optional(),
@@ -1867,7 +1867,7 @@ Working practices:
     {
       title: "Type text",
       description:
-        "Paste text into the active Windows application using the clipboard. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
+        "Paste text into the active Windows application using the clipboard. Requires ALLOW_GUI=1 in .env; already fully authorized by this connection.",
       inputSchema: {
         text: z.string(),
         restoreClipboard: z.boolean().optional(),
