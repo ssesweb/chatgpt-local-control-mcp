@@ -29,8 +29,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   // MARK: 状态检测
 
+  static func mcpPort() -> Int {
+    let envPath = "/Users/tongli/Downloads/git/chatgpt-local-control-mcp/.env"
+    if let text = try? String(contentsOfFile: envPath, encoding: .utf8) {
+      for line in text.split(separator: "\n") {
+        if line.hasPrefix("PORT="), let p = Int(line.dropFirst(5).trimmingCharacters(in: .whitespaces)) { return p }
+      }
+    }
+    return 8787
+  }
+
   static func serverUp() -> Bool {
-    guard let url = URL(string: "http://127.0.0.1:8787/health") else { return false }
+    guard let url = URL(string: "http://127.0.0.1:\(mcpPort())/health") else { return false }
     var req = URLRequest(url: url)
     req.timeoutInterval = 2.0
     let sem = DispatchSemaphore(value: 0)

@@ -118,7 +118,8 @@ namespace McpTray
         {
             try
             {
-                HttpWebRequest req = (HttpWebRequest)WebRequest.Create("http://127.0.0.1:8787/health");
+                string port = EnvGet("PORT"); if (string.IsNullOrEmpty(port)) port = "8787";
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create("http://127.0.0.1:" + port + "/health");
                 req.Timeout = 2000;
                 req.ReadWriteTimeout = 2000;
                 using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
