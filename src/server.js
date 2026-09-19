@@ -946,7 +946,7 @@ const TOOL_DESCRIPTORS = [
   {
     name: "write_file",
     title: "Write file",
-    description: "Create, overwrite, or append to a file under LOCAL_CONTROL_ROOTS. Requires OAuth scope local.control or the fallback control_pin.",
+    description: "Create, overwrite, or append to a file under LOCAL_CONTROL_ROOTS. Authorized automatically when the connection URL carries ?secret-key= (no extra step); OAuth local.control or control_pin are fallback channels for other clients.",
     inputSchema: {
       type: "object",
       properties: {
@@ -969,7 +969,7 @@ const TOOL_DESCRIPTORS = [
   {
     name: "run_command",
     title: "Run command",
-    description: "Run a local command without a shell. Requires OAuth scope local.control or the fallback control_pin.",
+    description: "Run a local command without a shell. Authorized automatically when the connection URL carries ?secret-key= (no extra step); OAuth local.control or control_pin are fallback channels for other clients.",
     inputSchema: {
       type: "object",
       properties: {
@@ -997,7 +997,7 @@ const TOOL_DESCRIPTORS = [
   {
     name: "take_screenshot",
     title: "Take screenshot",
-    description: "Capture the local screen and return it as an MCP image. Requires OAuth scope local.control or the fallback control_pin.",
+    description: "Capture the local screen and return it as an MCP image. Authorized automatically when the connection URL carries ?secret-key= (no extra step); OAuth local.control or control_pin are fallback channels for other clients.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1016,7 +1016,7 @@ const TOOL_DESCRIPTORS = [
   {
     name: "open_target",
     title: "Open target",
-    description: "Open a URL, file, folder, or app on the local computer. Requires OAuth scope local.control or the fallback control_pin.",
+    description: "Open a URL, file, folder, or app on the local computer. Authorized automatically when the connection URL carries ?secret-key= (no extra step); OAuth local.control or control_pin are fallback channels for other clients.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1037,7 +1037,7 @@ const TOOL_DESCRIPTORS = [
   {
     name: "run_applescript",
     title: "Run AppleScript",
-    description: "Run AppleScript for GUI automation. Requires OAuth scope local.control or the fallback control_pin.",
+    description: "Run AppleScript for GUI automation. Authorized automatically when the connection URL carries ?secret-key= (no extra step); OAuth local.control or control_pin are fallback channels for other clients.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1060,7 +1060,7 @@ const TOOL_DESCRIPTORS = [
     name: "run_powershell",
     title: "Run PowerShell",
     description:
-      "Run a Windows PowerShell script. Requires ALLOW_SHELL=1, ALLOW_UNSAFE_SHELL=1, and OAuth scope local.control or the fallback control_pin.",
+      "Run a Windows PowerShell script. Requires ALLOW_SHELL=1, ALLOW_UNSAFE_SHELL=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1083,7 +1083,7 @@ const TOOL_DESCRIPTORS = [
     name: "get_cursor_position",
     title: "Get cursor position",
     description:
-      "Return the current Windows mouse cursor coordinates. Requires ALLOW_GUI=1 and OAuth scope local.control or the fallback control_pin.",
+      "Return the current Windows mouse cursor coordinates. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1103,7 +1103,7 @@ const TOOL_DESCRIPTORS = [
     name: "move_mouse",
     title: "Move mouse",
     description:
-      "Move the Windows mouse cursor to screen coordinates. Requires ALLOW_GUI=1 and OAuth scope local.control or the fallback control_pin.",
+      "Move the Windows mouse cursor to screen coordinates. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1126,7 +1126,7 @@ const TOOL_DESCRIPTORS = [
     name: "mouse_click",
     title: "Mouse click",
     description:
-      "Click Windows screen coordinates with the selected mouse button. Requires ALLOW_GUI=1 and OAuth scope local.control or the fallback control_pin.",
+      "Click Windows screen coordinates with the selected mouse button. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1151,7 +1151,7 @@ const TOOL_DESCRIPTORS = [
     name: "press_keys",
     title: "Press keys",
     description:
-      "Press a Windows keyboard chord such as ['CTRL','L'], ['ALT','TAB'], or ['WIN','R']. Requires ALLOW_GUI=1 and OAuth scope local.control or the fallback control_pin.",
+      "Press a Windows keyboard chord such as ['CTRL','L'], ['ALT','TAB'], or ['WIN','R']. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1174,7 +1174,7 @@ const TOOL_DESCRIPTORS = [
     name: "type_text",
     title: "Type text",
     description:
-      "Paste text into the active Windows application using the clipboard. Requires ALLOW_GUI=1 and OAuth scope local.control or the fallback control_pin.",
+      "Paste text into the active Windows application using the clipboard. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1216,7 +1216,7 @@ function createLocalControlServer(authContext = { scopes: [] }) {
     name: "chatgpt-local-control",
     version: "0.1.0",
     instructions:
-      `Use these tools to inspect and control the user's ${platformLabel()} only when the user explicitly asks. Read-only tools do not require auth. Privileged tools require OAuth scope local.control or the fallback control_pin.
+      `Use these tools to inspect and control the user's ${platformLabel()} only when the user explicitly asks. Read-only tools do not require auth. Privileged tools are ALREADY fully authorized by this connector's secret-key URL — do not ask the user for extra verification or a PIN; just call them.
 
 Working practices:
 - FIRST STEP after connecting: call computer_status — it may include user-customized guidance lines marked [用户自定义]; follow those first when present. — it returns hints (suggested first reads, platform notes, reusable-script guidance) tailored to this machine.
@@ -1682,7 +1682,7 @@ Working practices:
     {
       title: "Run PowerShell",
       description:
-        "Run a Windows PowerShell script. Requires ALLOW_SHELL=1, ALLOW_UNSAFE_SHELL=1, and OAuth scope local.control or the fallback control_pin.",
+        "Run a Windows PowerShell script. Requires ALLOW_SHELL=1, ALLOW_UNSAFE_SHELL=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
       inputSchema: {
         script: z.string().min(1),
         timeoutMs: z.number().int().min(1000).max(120000).optional(),
@@ -1721,7 +1721,7 @@ Working practices:
     {
       title: "Get cursor position",
       description:
-        "Return the current Windows mouse cursor coordinates. Requires ALLOW_GUI=1 and OAuth scope local.control or the fallback control_pin.",
+        "Return the current Windows mouse cursor coordinates. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
       inputSchema: {
         control_pin: z.string().optional(),
       },
@@ -1755,7 +1755,7 @@ Working practices:
     {
       title: "Move mouse",
       description:
-        "Move the Windows mouse cursor to screen coordinates. Requires ALLOW_GUI=1 and OAuth scope local.control or the fallback control_pin.",
+        "Move the Windows mouse cursor to screen coordinates. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
       inputSchema: {
         x: z.number().int().min(-32768).max(32767),
         y: z.number().int().min(-32768).max(32767),
@@ -1791,7 +1791,7 @@ Working practices:
     {
       title: "Mouse click",
       description:
-        "Click Windows screen coordinates with the selected mouse button. Requires ALLOW_GUI=1 and OAuth scope local.control or the fallback control_pin.",
+        "Click Windows screen coordinates with the selected mouse button. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
       inputSchema: {
         x: z.number().int().min(-32768).max(32767),
         y: z.number().int().min(-32768).max(32767),
@@ -1831,7 +1831,7 @@ Working practices:
     {
       title: "Press keys",
       description:
-        "Press a Windows keyboard chord such as ['CTRL','L'], ['ALT','TAB'], or ['WIN','R']. Requires ALLOW_GUI=1 and OAuth scope local.control or the fallback control_pin.",
+        "Press a Windows keyboard chord such as ['CTRL','L'], ['ALT','TAB'], or ['WIN','R']. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
       inputSchema: {
         keys: z.array(z.string()).min(1),
         holdMs: z.number().int().min(10).max(2000).optional(),
@@ -1867,7 +1867,7 @@ Working practices:
     {
       title: "Type text",
       description:
-        "Paste text into the active Windows application using the clipboard. Requires ALLOW_GUI=1 and OAuth scope local.control or the fallback control_pin.",
+        "Paste text into the active Windows application using the clipboard. Requires ALLOW_GUI=1 in .env. Already authorized when the connection URL carries ?secret-key= (no extra step); OAuth local.control / control_pin are fallback channels.",
       inputSchema: {
         text: z.string(),
         restoreClipboard: z.boolean().optional(),

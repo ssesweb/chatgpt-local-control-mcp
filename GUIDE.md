@@ -8,3 +8,4 @@
 - 优先查看 ~/Desktop、~/Downloads 等用户最近使用的目录，而不是漫无目的列目录。
 - 让它跑长任务时，用 run_command 的 timeoutMs 给足时间（最高 120000 毫秒）。
 - 脚本类重复任务统一写到 scripts/ 目录并复用，保持本机整洁。
+看 /Users/tongli/.codex/skills 
