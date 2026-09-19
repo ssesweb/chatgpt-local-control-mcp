@@ -449,6 +449,13 @@ namespace McpTray
 
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(InfoItem("资源"));
+            menu.Items.Add(new ToolStripMenuItem("编辑 GUIDE.md（连接引导）", IconFor("notebook-pen"), delegate
+            {
+                string gp = Path.Combine(proj, "GUIDE.md");
+                if (!File.Exists(gp)) File.WriteAllText(gp, "# MCP 连接引导（用户自定义）\r\n\r\n- 每行一条引导建议，保存即生效（无需重启）\r\n- 以 # 或 > 开头的行会被忽略\r\n", new UTF8Encoding(false));
+                try { Process.Start(new ProcessStartInfo(gp) { UseShellExecute = true }); }
+                catch (Exception ex) { Balloon("打开失败：" + ex.Message); }
+            }));
             menu.Items.Add(new ToolStripMenuItem("打开日志文件夹", IconFor("folder-open"), delegate { Process.Start("explorer.exe", "\"" + logDir + "\""); }));
             menu.Items.Add(new ToolStripMenuItem("打开项目文件夹", IconFor("folder-code"), delegate { Process.Start("explorer.exe", "\"" + proj + "\""); }));
 

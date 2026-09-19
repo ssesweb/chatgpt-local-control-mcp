@@ -277,6 +277,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // ── 分区：资源 ──
     menu.addItem(.separator())
     menu.addItem(sectionHeader("资源"))
+    let guideItem = menu.addItem(withTitle: "编辑 GUIDE.md（连接引导）", action: #selector(editGuide(_:)), keyEquivalent: "g")
+    guideItem.target = self
+    guideItem.image = icon("notebook-pen")
     let logs = menu.addItem(withTitle: "打开日志文件夹", action: #selector(openLogs(_:)), keyEquivalent: "")
     logs.target = self
     logs.image = icon("folder-open")
@@ -319,6 +322,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     Self.notify("已停止服务与隧道")
     refreshStatus()
   }
+  @objc func editGuide(_ sender: NSMenuItem) {
+    let guidePath = proj + "/GUIDE.md"
+    if !FileManager.default.fileExists(atPath: guidePath) {
+      try? "# MCP 连接引导（用户自定义）\n\n- 每行一条引导建议，保存即生效，无需重启服务。\n- 服务端会过滤以 # 或 > 开头的行。\n".write(toFile: guidePath, atomically: true, encoding: .utf8)
+    }
+    Self.runShell("/usr/bin/open -t '\(proj)/GUIDE.md'")
+  }
+
   @objc func openLogs(_ sender: NSMenuItem) {
     NSWorkspace.shared.open(URL(fileURLWithPath: logDir))
   }

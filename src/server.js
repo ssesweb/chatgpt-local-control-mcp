@@ -10,9 +10,10 @@ import {
   writeFile,
   appendFile,
 } from "node:fs/promises";
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -1194,6 +1195,22 @@ const TOOL_DESCRIPTORS = [
   },
 ];
 
+const GUIDE_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "GUIDE.md");
+
+function loadGuideHints() {
+  // 用户可在项目根目录放 GUIDE.md 自定义引导（每行一条），每次调用实时读取，无需重启
+  try {
+    return readFileSync(GUIDE_FILE, "utf8")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#") && !line.startsWith(">"))
+      .map((line) => (line.startsWith("- ") ? line.slice(2) : line))
+      .slice(0, 12);
+  } catch {
+    return [];
+  }
+}
+
 function createLocalControlServer(authContext = { scopes: [] }) {
   const server = new McpServer({
     name: "chatgpt-local-control",
@@ -1202,7 +1219,7 @@ function createLocalControlServer(authContext = { scopes: [] }) {
       `Use these tools to inspect and control the user's ${platformLabel()} only when the user explicitly asks. Read-only tools do not require auth. Privileged tools require OAuth scope local.control or the fallback control_pin.
 
 Working practices:
-- FIRST STEP after connecting: call computer_status — it returns hints (suggested first reads, platform notes, reusable-script guidance) tailored to this machine.
+- FIRST STEP after connecting: call computer_status — it may include user-customized guidance lines marked [用户自定义]; follow those first when present. — it returns hints (suggested first reads, platform notes, reusable-script guidance) tailored to this machine.
 - Missing tool or "unknown tool" error means that capability is disabled in server config, not a connection problem. Call computer_status, tell the user which ALLOW_* flag in the server's .env enables it (writes=ALLOW_WRITES, shell=ALLOW_SHELL (+ALLOW_UNSAFE_SHELL for arbitrary commands), screenshot=ALLOW_SCREENSHOT, open=ALLOW_OPEN, applescript=ALLOW_APPLESCRIPT, gui=ALLOW_GUI), and have them edit .env then restart. If tools/list is empty or the endpoint is unreachable, the connector URL is wrong or missing ?secret-key=; ask the user for the exact URL instead of retrying blindly.
 - For complex or repeated operations, do not repeat long one-liners. Write a reusable script once into a folder under an allowed root (for example write_file to scripts/run-task.sh, remember to chmod +x via run_command) and afterwards invoke it with run_command and short arguments.
 - Command output is truncated around 100k characters. Prefer narrowing with head/tail/grep/wc, or write full output to a file and read it back in chunks with read_file.
@@ -1262,6 +1279,7 @@ Working practices:
           pinFallbackForControl: hasConfiguredControlPin(),
         },
         hints: [
+          ...loadGuideHints().map((line) => `[用户自定义] ${line}`),
           "首次使用：先 read_file 查看 LOCAL_CONTROL_ROOTS 内的关键目录或项目 README，再动手改东西。",
           "文件都在 allowedRoots 内才能访问；需要更多目录时让用户修改 .env 的 LOCAL_CONTROL_ROOTS 并重启服务。",
           PLATFORM === "darwin"
